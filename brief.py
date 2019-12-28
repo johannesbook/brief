@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 
 #Todo
-# surfstatus - om närmsta veckan visa en ruta med detaljer
-# kyleffekt
-# risk för åska
+# visa diff mellan nutid och senaste omladdningstid (health.js?)
+# visa vädret bättre (pil och sånt, och visa nu och sen på samma vis)
 # tågtider och förseningar
-# visa inte badtunnetemp om vi inte eldar
-# fält för text - typ "regn idag", eller "tågen sena!"
+# surfstatus - om närmsta veckan visa en ruta med detaljer
+# risk för åska, hagel och sånt
 # felhantering - vad om något av api'n inte svarar? 
+# api play nice - fråga inte smhi vid varje reload etc.
 
 #####
 ### Hack to display some status on 7" tablet next to entrance
@@ -19,8 +19,11 @@ from datetime import datetime
 from datetime import timedelta
 import locale
 import time
+import xml.etree.ElementTree as ET
 import requests
 import json
+from bs4 import BeautifulSoup
+import urllib2
 from googleapiclient.discovery import build
 from httplib2 import Http
 from oauth2client import file, client, tools
@@ -28,12 +31,40 @@ from oauth2client import file, client, tools
 while True:
 	
 	###
+	### Checking train delays with skånetrafiken
+	###
+	
+	url = 'http://www.labs.skanetrafiken.se/v2.2/resultspage.asp?cmdaction=previous&selPointFr=malm%F6%20C|80000|0&selPointTo=trelleborg|87071|0'
+	file2 = urllib2.urlopen(url)
+	data = file2.read()
+	file2.close()
+
+	
+	# root = ET.fromstring(data)
+	
+	# for journeys in root[0][0][0][3]:
+		# for journey in journeys[13]:
+			# departure = journey[1].text
+			# depdev = journey[7][0][2].text
+			# arrival = journey[3].text
+			# arrdev = journey[7][0][4].text
+			# if arrdev != "0":
+				# devString = "FIXA HÄR TYP 22.20 avgick 3 minuter sent"
+			# print "dep: ", departure
+			# print "dep dev: ", depdev
+			# print "arr: ", arrival
+			# print "arrdev: ", arrdev
+			#kolla också hur cancelleringar syns
+	
+	# break
+	
+	###
 	### Accessing thinger.io API to get badtunnetemp
 	###
 	print str(datetime.now()) + ": Accessing thinger.io..."
 	url = 'https://api.thinger.io/v2/users/johannesbook/devices/badtunnecontroller/temp1'
 	headers = {'content-type': 'application/json, text/plain, */*', \
-        	'Authorization': 'Bearer keygoeshere'}
+        	'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJicmllZiIsInVzciI6ImpvaGFubmVzYm9vayJ9.Nxh_5BsFNRS10GJToEC-q_4Ii1lJGLPUJq8YNNd8sSk'}
 	r = requests.get(url, headers=headers)
 	if r.text == "{\"error\":{\"message\":\"device not found\"}}": #if wifi of the arduino has hung and needs reboot
 		thingerBadtunneTemp = -99
@@ -46,12 +77,15 @@ while True:
 	print str(datetime.now()) + ": Accessing Nibe Uplink..."
 	browser = RoboBrowser(history=True, parser='html.parser')
 	browser.open('http://www.nibeuplink.com/')
+	print "..2.."
 	form = browser.get_form(action='/LogIn')
-	form["Email"] = 'email'
-	form["Password"] = 'pwd'
+	form["Email"] = 'your email here'
+	form["Password"] = 'your password here'
 	browser.submit_form(form)
+	print "..3.."
 	browser.open('https://www.nibeuplink.com/System/38188/Status/ServiceInfo')
 	html = str(browser.select)
+	print "..4.."
 
 	nibeOutTemp = re.search(r'.*utetemperatur.*?>([-?\d\.]*)\\xb0C',html).group(1) 
 	nibeWaterTempTop = re.search(r'.*varmvatten.*?topp.*?>([\d\.]*)\\xb0C',html).group(1) 
@@ -98,10 +132,45 @@ while True:
 			windDirNow = forecast['timeSeries'][0]['parameters'][j]['values'][0]
 
 	windDirections = ["nord","nordnordost","nordost","ostnordost","ost","ostsydost","sydost","sydsydost","syd","sydsydväst","sydväst","västsydväst","väst","västnordväst","nordväst","nordnordväst","nord"]
-	windDirIndex = int(round((windDirNow % 360) / 22.5,0) )
+	windDirIndexNow = int(round((windDirNow % 360) / 22.5,0) )
 
 	#Calculate windchill, based on temperature and wind
 	windChill = 13.12 + 0.625*float(nibeOutTemp) - 13.956*float(windSpeedNow)**0.16 + 0.48669*float(nibeOutTemp)*float(windSpeedNow)**0.16
+
+	###
+	### Check forcast for next morning / evening - next potential bikeride
+	###
+	targetHour = 6
+	if hourNow >= 5:
+		targetHour = 18
+	if hourNow >= 18:
+		targetHour = 6
+	hourDelta = targetHour - hourNow #how many hours from now should we check
+	if hourDelta < 0: 
+		hourDelta = hourDelta + 24
+		
+	#wind and wind dir
+	for j in range (0,18):
+		if forecast['timeSeries'][hourDelta]['parameters'][j]['name'] == 'ws':
+			windSpeedThen = forecast['timeSeries'][hourDelta]['parameters'][j]['values'][0]
+		if forecast['timeSeries'][hourDelta]['parameters'][j]['name'] == 'wd':
+			windDirThen = forecast['timeSeries'][hourDelta]['parameters'][j]['values'][0]
+	windDirIndexThen = int(round((windDirNow % 360) / 22.5,0) )
+
+	#precipitation
+	for j in range (0,18):	#there are 19 parameters in the API
+		if forecast['timeSeries'][hourDelta]['parameters'][j]['name'] == 'pmean': #pmean is the hourly average precipitation
+			precipitationThen = float(forecast['timeSeries'][hourDelta]['parameters'][j]['values'][0])
+
+	#precipitation type
+	for j in range (0,18):	#there are 19 parameters in the API
+		if forecast['timeSeries'][hourDelta]['parameters'][j]['name'] == 'pcat': #category
+			precipitationCategoryThen = float(forecast['timeSeries'][hourDelta]['parameters'][j]['values'][0])
+
+	#temperature
+	for j in range (0,18):	#there are 19 parameters in the API
+		if forecast['timeSeries'][hourDelta]['parameters'][j]['name'] == 't': #temp 
+			tempThen = float(forecast['timeSeries'][hourDelta]['parameters'][j]['values'][0])
 	
 	###
 	### Get namnsdag
@@ -110,7 +179,12 @@ while True:
 	browser = RoboBrowser(history=True, parser='html.parser')
 	browser.open('https://www.dagensnamn.nu/')
 	html = str(browser.select)
-	namnsDag = re.search(r'.*har</h3><h1 style="margin-bottom:20px;">(.*)</h1><h3 style="margin-top:0px;">....namnsdag.',html).group(1) 
+	namnsDag = re.search(r'.*har</span></div><h1>(.*)</h1><div class="today">....namnsdag.',html)
+	#namnsDag = re.search(r'.*har</h3><h1 style="margin-bottom:20px;">(.*)</h1><h3 style="margin-top:0px;">....namnsdag.',html)
+	if namnsDag:
+		namnsDag = namnsDag.group(1)
+	else:
+		namnsDag = ""
 	if (datetime.today().day == 25 and datetime.today().month == 2): 
 		namnsDag += ", Elvin"
 	
@@ -121,7 +195,8 @@ while True:
 	print str(datetime.now()) + ": Accessing Google calendar API..."
 	SCOPES = 'https://www.googleapis.com/auth/calendar.readonly'
 	store = file.Storage('/home/pi/brief/token.json')
-	creds = store.get()
+	try: creds = store.get()
+	except: print "aaargh"
 	if not creds or creds.invalid:
 		flow = client.flow_from_clientsecrets('/home/pi/brief/credentials.json', SCOPES)
 		creds = tools.run_flow(flow, store)
@@ -143,7 +218,10 @@ while True:
 		start = event['start'].get('dateTime', event['start'].get('date'))
 		#print start
 		if 'T' in start:
+			print "1" + start
 			start = re.sub('\+01:00','',start) #remove time zone info - not interesting
+			start = re.sub('\+02:00','',start) #could be 2 hours too, apparently. :( 
+			print "2" + start
 			start = datetime.strptime(start,'%Y-%m-%dT%H:%M:%S')
 		else:
 			start = datetime.strptime(start,'%Y-%m-%d')
@@ -171,24 +249,7 @@ while True:
 		calTomorrow += 'Inget!'
 	if calDayAfterTomorrow == '':
 		calDayAfterTomorrow += 'Inget!'
-			
-
-			#if start.day == (datetime.now() + timedelta(days=1)).day:
-		#	cal += 'Imorgon'
-		#	else: 
-		#		if start.day == (datetime.now() + timedelta(days=2)).day:
-		#			cal += 'I övermorgon ' #hrmpf
-		#		else:
-		#			cal += str(start)
-		
-		#if start.day == datetime.now().day or start.day == (datetime.now() + timedelta(days=1)).day: #if not today or tomorrow, skip
-		#	if start.hour == 0 and start.minute == 0: #full day event
-		#		cal += ': '
-		#	else:
-		#		cal += ' ' + str(start.hour).zfill(2) + ':' + str(start.minute).zfill(2) + ': '
-		#	cal += event['summary'].encode('utf-8')
-		#	cal += '<br/>'	
-		
+					
 	###
 	### Get time
 	###
@@ -200,6 +261,8 @@ while True:
 	###
 	### Top message
 	###
+	minuteNow = datetime.now().minute
+
 	topMessage = ''
 	if hourNow >= 0 and hourNow < 6:
 		topMessage = 'Natt'
@@ -211,26 +274,44 @@ while True:
 		topMessage = 'God eftermiddag!'
 	if hourNow >= 17:
 		topMessage = 'Godkväll!'
-	if windSpeedNow > 14:
-		topMessage = 'Kuling ute'
+	if (hourNow == 7 and minuteNow >= 0 and minuteNow <= 20) or (hourNow == 6 and minuteNow >= 0 and minuteNow <= 20):
+		topMessage = 'Ha en bra dag!'
+	if float(remainingPrecipitation) > 1:
+		topMessage = 'Nederbörd idag.'
+	if float(windSpeedNow) > 14:
+		topMessage = 'Kuling nu!'
 	if float(nibeOutTemp) < 0: 
-		topMessage = 'Frost ute'
-	if windSpeedNow > 24:
-		topMessage = 'Storm ute'
+		topMessage = 'Frost nu!'
+	if float(windSpeedNow) > 24:
+		topMessage = 'Storm nu!'
 	if (datetime.today().day == 25 and datetime.today().month == 2): 
 		topMessage = 'Grattis på namnsdagen Elvin!'
 	if (datetime.today().day == 16 and datetime.today().month == 3): 
 		topMessage = 'Grattis på födelsedagen Elvin!'
-	if (datetime.today().day == 24 and datetime.today().month == 12): 
-		topMessage = 'God jul!'
-	if (datetime.today().day == 3 and datetime.today().month == 3): 
+	if (datetime.today().day == 17 and datetime.today().month == 3): 
+		topMessage = 'Grattis på födelsedagen Sinus!'
+	if (datetime.today().day == 3 and datetime.today().month == 5): 
 		topMessage = 'Grattis på födelsedagen Jenny!'
-	if (datetime.today().day == 13 and datetime.today().month == 11): 
-		topMessage = 'Grattis på födelsedagen Sixten!'
 	if (datetime.today().day == 27 and datetime.today().month == 6): 
 		topMessage = 'Grattis på födelsedagen Johannes!'
-
-
+	if (datetime.today().day == 6 and datetime.today().month == 10): 
+		topMessage = 'Grattis på namnsdagen Jenny!'
+	if (datetime.today().day == 13 and datetime.today().month == 11): 
+		topMessage = 'Grattis på födelsedagen Sixten!'
+	if (datetime.today().day == 5 and datetime.today().month == 12): 
+		topMessage = 'Ha en bra studiedag Elvin!'
+	if (datetime.today().day == 14 and datetime.today().month == 12): 
+		topMessage = 'Grattis på namnsdagen Sixten!'
+	if (datetime.today().day == 24 and datetime.today().month == 12): 
+		topMessage = 'God jul!'
+	if (datetime.today().day == 27 and datetime.today().month == 12): 
+		topMessage = 'Grattis på namnsdagen Johannes!'
+	if (datetime.today().day == 31 and datetime.today().month == 12): 
+		topMessage = 'Gott nytt år!'
+	if (float(thingerBadtunneTemp) - float(nibeOutTemp) > 10):
+		topMessage = str(round(float(thingerBadtunneTemp),0)).rstrip('0').rstrip('.') + '° i badtunnan!'
+	
+	
 	###
 	### Create HTML file
 	###
@@ -247,20 +328,28 @@ while True:
 			<meta http-equiv="refresh" content="61" />
 			<title>Brief</title>
 		</head>
-		<body>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+		<script src="js/clock.js"></script>
+		<body onload="startTime()">"""
+		
+	if (datetime.today().day == 1 and datetime.today().month == 1): 
+		htmlout +=  """	<div id='anim'><img src='https://media.giphy.com/media/uV6ZueyzR8J6pCdxtZ/giphy.gif' /></div>"""
+			
+	htmlout += """ 
 			<div id='sub'>
-				<div id='top-box'>
+						<div id='top-box'>
 					<span id='top'>""" + topMessage + """</span>
 				</div>
 			</div>
 			<div id='sub'>
 				<div id='box'>
-					<span id='big'>""" + clock + """<br/></span>
+					<span id='big'><div id='jsclock'></div></span>
+					<!---<span id='big'>""" + clock + """<br/></span>--->
 					<span id='small'>""" + date + """<br/>""" + namnsDag + """</span>
 				</div>
 				<div id='box'>
 					<span id="big">""" + str(round(float(nibeOutTemp),0)).rstrip('0').rstrip('.') + """°<br/></span>
-					<span id="small">..just nu. """ + str(round(float(windSpeedNow),0)).rstrip('0').rstrip('.') + """m/s, """ + windDirections[windDirIndex] + """<br/>
+					<span id="small">..just nu. """ + str(round(float(windSpeedNow),0)).rstrip('0').rstrip('.') + """m/s, """ + windDirections[windDirIndexNow] + """<br/>
 					  känns som """ + str(round(windChill,0)).rstrip('0').rstrip('.') + """°
 					</span>
 				</div>
@@ -279,16 +368,44 @@ while True:
 					<!--- <span id="cal">Imorgon: <br/>""" + calTomorrow + """</span>--->
 				</div>
 				<div id='box'>
-					<span id="big">""" + remainingPrecipitation + """<br/></span>
-					<span id="small">..mm regn under resten av dagen</span>
+					<span id="big">""" + str(round(float(windSpeedThen),0)).rstrip('0').rstrip('.') + """ m/s<br/></span>
+					<span id="small">""" + windDirections[windDirIndexThen] 
+	if 	targetHour == 6:
+		htmlout += """ imorgon bitti, <br/>"""
+	if 	targetHour == 18:
+		htmlout += """ ikväll, <br/>"""
+	if precipitationCategoryThen == 0:
+		htmlout += """uppehåll"""
+	if precipitationCategoryThen == 1:
+		htmlout += """snö"""
+	if precipitationCategoryThen == 2:
+		htmlout += """snöblandat"""
+	if precipitationCategoryThen == 3:
+		htmlout += """regn"""
+	if precipitationCategoryThen == 4:
+		htmlout += """duggregn"""
+	if precipitationCategoryThen == 5:
+		htmlout += """hagel"""
+	if precipitationCategoryThen == 6:
+		htmlout += """hagel"""
+	htmlout += 	""" och """ + str(round(float(tempThen),0)).rstrip('0').rstrip('.') + """° varmt.</span>
 				</div>
 				<div id='box'>
+					<span id="big">""" + str(round(float(nibeExhaustTemp),0)).rstrip('0').rstrip('.') + """°<br/></span>
+					<span id="small">...avluftstemp. Elpatron """
+	if float(nibeHeaterPower) == 0:
+		htmlout += """avstängd."""
+	else:	
+		htmlout += """igång, """ + str(round(float(nibeHeaterPower),0)).rstrip('0').rstrip('.') + """kW."""
+	htmlout += """			
 				</div>
 			</div>
-	<!---		<div id='foot'>
-				<span id='small'>brief by Johannes Book 2018&nbsp;&nbsp;</span>
-			</div>--->
 		</body>
+		<script type="text/javascript">
+			
+				
+		
+		</script>
 	</html>
 	"""
 
@@ -296,5 +413,5 @@ while True:
 		file.write(htmlout)
 		
 	print str(datetime.now()) + ": Sleeping..."
-	time.sleep(5)
+	time.sleep(300) 
 	

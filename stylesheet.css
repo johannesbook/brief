@@ -16,7 +16,13 @@ body {
 	margin: 0;
 	color: #FFFFE0;
 }
-			
+
+#anim {
+	position: fixed;
+	bottom: 300px;
+	left: 800px;
+}			
+
 #main {
 	font-family: 'mp_sansregular', Fallback, sans-serif;
 	font-size: 130;
