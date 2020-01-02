@@ -9,10 +9,11 @@
 			<meta charset="utf-8" />
 			<meta http-equiv="refresh" content="61" />
 			<title>Brief</title>
+			
 		</head>
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
-		<script src="js/clock.js"></script>
-		<body onload="startTime()"> 
+		<script src="js/main.js"></script>
+		<body onload="main()"> 
 			<div id='sub'>
 						<div id='top-box'>
 					<span id='top'>Godkväll!</span>
@@ -21,33 +22,42 @@
 			<div id='sub'>
 				<div id='box'>
 					<span id='big'><div id='jsclock'></div></span>
-					<!---<span id='big'>20:59<br/></span>--->
-					<span id='small'>lördag 28:e december<br/>Benjamin</span>
+					<!---<span id='big'>23:23<br/></span>--->
+					<span id='small'>torsdag 02:e januari<br/>Svea</span>
+					<span id='alert'><div id='outofdate'></div></span>
 				</div>
 				<div id='box'>
-					<span id="big">0°<br/></span>
-					<span id="small">..just nu. 4m/s, västsydväst<br/>
-					  känns som -4°
+					<!---<span id="big">2°<br/></span>--->
+					<span id="big">10 m/s<br/></span>
+					<span id="small">västsydväst just nu. <br/> 
+						2°, känns som -4°
 					</span>
+					<span id="small"><div id='trainStatus'></div></span>
 				</div>
 				<div id='box'>
-					<span id="big">20°<br/></span>
-					<span id="small">..inne, 112% värme i pannan, <br/>
-					  7° i badtunnan<br/></span>
+					<!---<span id="big">20°<br/></span> --->
+					<span id="big">2°<br/></span>
+					<span id="small">utomhus<br/> 20° inne<br/>
+					51° (105%) i pannan<br/>
+					1° avluftstemp<br/> 
+					7 kW elpatron<br/> 
+					10° i badtunnan<br/></span>
 				</div>
 			</div>
 			<div id='sub'>
 				<div id='box'>
-					<span id="cal">Imorgon: <br/>Inget!</span>
-					<!--- <span id="cal">Imorgon: <br/>Inget!</span>--->
+					<span id="cal">Imorgon: <br/> 13:00: Bio med farmor<br/></span>
+					<!--- <span id="cal">Imorgon: <br/> 13:00: Bio med farmor<br/></span>--->
 				</div>
 				<div id='box'>
-					<span id="big">7 m/s<br/></span>
-					<span id="small">västsydväst imorgon bitti, <br/>uppehåll och 3° varmt.</span>
+					<span id="big">12 m/s<br/></span>
+					<span id="small">västsydväst imorgon bitti, <br/>duggregn och 5° varmt.</span>
 				</div>
 				<div id='box'>
+					<!---
 					<span id="big">1°<br/></span>
-					<span id="small">...avluftstemp. Elpatron igång, 2kW.			
+					<span id="small">...avluftstemp. Elpatron igång, 7kW.		
+					---->
 				</div>
 			</div>
 		</body>

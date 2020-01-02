@@ -99,6 +99,11 @@ body {
 	font-size: 20px;
 	text-align: center;
 }
+#alert{
+	color: #A01000;
+	font-size: 20px;
+	text-align: center;
+}
 #cal{
 	color: #707060;
 	font-size: 20px;

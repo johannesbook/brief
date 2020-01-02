@@ -19,7 +19,6 @@ from datetime import datetime
 from datetime import timedelta
 import locale
 import time
-import xml.etree.ElementTree as ET
 import requests
 import json
 from bs4 import BeautifulSoup
@@ -79,8 +78,8 @@ while True:
 	browser.open('http://www.nibeuplink.com/')
 	print "..2.."
 	form = browser.get_form(action='/LogIn')
-	form["Email"] = 'your email here'
-	form["Password"] = 'your password here'
+	form["Email"] = 'email'
+	form["Password"] = 'pass'
 	browser.submit_form(form)
 	print "..3.."
 	browser.open('https://www.nibeuplink.com/System/38188/Status/ServiceInfo')
@@ -246,7 +245,7 @@ while True:
 			calDayAfterTomorrow += '<br/>'	
 			
 	if calTomorrow == '':
-		calTomorrow += 'Inget!'
+		calTomorrow += 'Inget i kalendern!'
 	if calDayAfterTomorrow == '':
 		calDayAfterTomorrow += 'Inget!'
 					
@@ -255,6 +254,7 @@ while True:
 	###
 	print str(datetime.now()) + ": Getting local time..."
 	locale.setlocale(locale.LC_ALL, 'sv_SE.utf8')
+	created = datetime.now()
 	clock = datetime.now().strftime('%H:%M')
 	date = str(datetime.now().strftime('%A %d:e %B'))
 	
@@ -327,10 +327,11 @@ while True:
 			<meta charset="utf-8" />
 			<meta http-equiv="refresh" content="61" />
 			<title>Brief</title>
+			
 		</head>
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
-		<script src="js/clock.js"></script>
-		<body onload="startTime()">"""
+		<script src="js/main.js"></script>
+		<body onload="main()">"""
 		
 	if (datetime.today().day == 1 and datetime.today().month == 1): 
 		htmlout +=  """	<div id='anim'><img src='https://media.giphy.com/media/uV6ZueyzR8J6pCdxtZ/giphy.gif' /></div>"""
@@ -346,17 +347,24 @@ while True:
 					<span id='big'><div id='jsclock'></div></span>
 					<!---<span id='big'>""" + clock + """<br/></span>--->
 					<span id='small'>""" + date + """<br/>""" + namnsDag + """</span>
+					<span id='alert'><div id='outofdate'></div></span>
 				</div>
 				<div id='box'>
-					<span id="big">""" + str(round(float(nibeOutTemp),0)).rstrip('0').rstrip('.') + """°<br/></span>
-					<span id="small">..just nu. """ + str(round(float(windSpeedNow),0)).rstrip('0').rstrip('.') + """m/s, """ + windDirections[windDirIndexNow] + """<br/>
-					  känns som """ + str(round(windChill,0)).rstrip('0').rstrip('.') + """°
+					<!---<span id="big">""" + str(round(float(nibeOutTemp),0)).rstrip('0').rstrip('.') + """°<br/></span>--->
+					<span id="big">""" + str(round(float(windSpeedNow),0)).rstrip('0').rstrip('.')  + """ m/s<br/></span>
+					<span id="small">""" + windDirections[windDirIndexNow] + """ just nu. <br/> 
+						""" + str(round(float(nibeOutTemp),0)).rstrip('0').rstrip('.') + """°, känns som """ + str(round(windChill,0)).rstrip('0').rstrip('.') + """°
 					</span>
+					<span id="small"><div id='trainStatus'></div></span>
 				</div>
 				<div id='box'>
-					<span id="big">""" +  str(round(float(nibeRoomTemp),0)).rstrip('0').rstrip('.') + """°<br/></span>
-					<span id="small">..inne, """ + str(round(float(nibeWaterSOC),0)).rstrip('0').rstrip('.') + """% värme i pannan, <br/>
-					  """ + str(round(float(thingerBadtunneTemp),0)).rstrip('0').rstrip('.') + """° i badtunnan<br/></span>
+					<!---<span id="big">""" +  str(round(float(nibeRoomTemp),0)).rstrip('0').rstrip('.') + """°<br/></span> --->
+					<span id="big">""" +  str(round(float(nibeOutTemp),0)).rstrip('0').rstrip('.') + """°<br/></span>
+					<span id="small">utomhus<br/> """ + str(round(float(nibeRoomTemp),0)).rstrip('0').rstrip('.') + """° inne<br/>
+					""" + str(round(float(nibeWaterTempTop),0)).rstrip('0').rstrip('.') + """° (""" + str(round(float(nibeWaterSOC),0)).rstrip('0').rstrip('.') + """%) i pannan<br/>
+					""" + str(round(float(nibeExhaustTemp),0)).rstrip('0').rstrip('.') + """° avluftstemp<br/> 
+					""" + str(round(float(nibeHeaterPower),0)).rstrip('0').rstrip('.') + """ kW elpatron<br/> 
+					""" + str(round(float(thingerBadtunneTemp),0)).rstrip('0').rstrip('.') + """° i badtunnan<br/></span>
 				</div>
 			</div>
 			<div id='sub'>
@@ -391,13 +399,15 @@ while True:
 	htmlout += 	""" och """ + str(round(float(tempThen),0)).rstrip('0').rstrip('.') + """° varmt.</span>
 				</div>
 				<div id='box'>
+					<!---
 					<span id="big">""" + str(round(float(nibeExhaustTemp),0)).rstrip('0').rstrip('.') + """°<br/></span>
 					<span id="small">...avluftstemp. Elpatron """
 	if float(nibeHeaterPower) == 0:
 		htmlout += """avstängd."""
 	else:	
 		htmlout += """igång, """ + str(round(float(nibeHeaterPower),0)).rstrip('0').rstrip('.') + """kW."""
-	htmlout += """			
+	htmlout += """		
+					---->
 				</div>
 			</div>
 		</body>
