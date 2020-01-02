@@ -2,6 +2,7 @@ function main() {
 	clock();
 	health();
 	trains();
+	windDirNow();
 }
 
 function health() {
@@ -55,3 +56,20 @@ function trains() {
 	setTimeout(trains, 1000 * 10 * 5); //check every 5 minutes
 }
 
+function windDirNow() {
+	try {
+		var request = new XMLHttpRequest()
+		request.open('GET', 'http://192.168.1.3/cgi-bin/weather.py?command=windDirNow', true)
+		request.onload = function() {
+			var windDirNow = this.response;
+			windDirNow = Number(windDirNow) + 180 //angle is where the wind is from, need to point the other direction
+			document.getElementById('windDirNow').innerHTML = "&#8593;";
+			document.getElementById('windDirNow').style.display = "inline-block";
+			document.getElementById('windDirNow').style.transform = "rotate(" + windDirNow + "deg)";
+		}
+		request.send();
+	} catch (e) {
+		console.log(e);
+	}
+	setTimeout(windDirNow, 1000 * 10 * 5); //check every 5 minutes
+}

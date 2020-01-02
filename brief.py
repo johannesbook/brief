@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 
 #Todo
-# visa diff mellan nutid och senaste omladdningstid (health.js?)
 # visa vädret bättre (pil och sånt, och visa nu och sen på samma vis)
-# tågtider och förseningar
 # surfstatus - om närmsta veckan visa en ruta med detaljer
 # risk för åska, hagel och sånt
 # felhantering - vad om något av api'n inte svarar? 
@@ -79,7 +77,7 @@ while True:
 	print "..2.."
 	form = browser.get_form(action='/LogIn')
 	form["Email"] = 'email'
-	form["Password"] = 'pass'
+	form["Password"] = 'email'
 	browser.submit_form(form)
 	print "..3.."
 	browser.open('https://www.nibeuplink.com/System/38188/Status/ServiceInfo')
@@ -203,7 +201,7 @@ while True:
 
     #Call the Calendar API
 	now = datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
-	events_result = service.events().list(calendarId='email', timeMin=now,
+	events_result = service.events().list(calendarId='hohoho@gmail.com', timeMin=now,
 										maxResults=20, singleEvents=True,
                                         orderBy='startTime').execute()
 	events = events_result.get('items', [])
@@ -351,7 +349,7 @@ while True:
 				</div>
 				<div id='box'>
 					<!---<span id="big">""" + str(round(float(nibeOutTemp),0)).rstrip('0').rstrip('.') + """°<br/></span>--->
-					<span id="big">""" + str(round(float(windSpeedNow),0)).rstrip('0').rstrip('.')  + """ m/s<br/></span>
+					<span id="big">""" + str(round(float(windSpeedNow),0)).rstrip('0').rstrip('.')  + """ m/s &nbsp;  <div id=windDirNow></div><br/></span>
 					<span id="small">""" + windDirections[windDirIndexNow] + """ just nu. <br/> 
 						""" + str(round(float(nibeOutTemp),0)).rstrip('0').rstrip('.') + """°, känns som """ + str(round(windChill,0)).rstrip('0').rstrip('.') + """°
 					</span>
